@@ -143,13 +143,13 @@ export function getReferrer(): string {
 }
 
 /**
- * Determines whether a URL is a file:// URL. This is obviously the case if it begins
- * with file://. Relative URLs are also file:// URLs iff the original document was loaded
- * via a file:// URL.
+ * Determines whether a URL is a file:// or resource:// URL. This is obviously the case if it begins
+ * with file:// or resource://. Relative URLs are also file:// or resource:// URLs iff the original document was loaded
+ * via a file:// or resource:// URL.
  * @param url - The URL to check
  * @returns `true` if the URL is a file:// URL, `false` otherwise
  */
-const isFileURL = url => url.startsWith('file:') || (getReferrer()?.startsWith('file:') && !/^\w+:/.test(url));
+const isFileURL = url => url.startsWith('file:') || url.startsWith('resource:') || ((getReferrer()?.startsWith('file:') || getReferrer()?.startsWith('resource:')) && !/^\w+:/.test(url));
 
 async function makeFetchRequest(requestParameters: RequestParameters, abortController: AbortController): Promise<GetResourceResponse<any>> {
     const request = new Request(requestParameters.url, {

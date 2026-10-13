@@ -16,9 +16,15 @@ export type LoadSpriteResult = {
 
 export function normalizeSpriteURL(url: string, format: string, extension: string): string {
     try {
-        const parsed = new URL(url);
-        parsed.pathname += `${format}${extension}`;
-        return parsed.toString();
+        // GeckoView makes `pathname` read-only on resource://android/assets/ URLs
+        // (https://bugzilla.mozilla.org/show_bug.cgi?id=1963823), so append to the
+        // serialised URL instead, keeping any query string or hash after the suffix.
+        const normalized = new URL(url).toString();
+        const suffix = `${format}${extension}`;
+        const queryOrHash = normalized.search(/[?#]/);
+        return queryOrHash === -1 ?
+            normalized + suffix :
+            normalized.slice(0, queryOrHash) + suffix + normalized.slice(queryOrHash);
     }
     catch {
         throw new Error(`Invalid sprite URL "${url}", must be absolute. Modify style specification directly or use TransformStyleFunction to correct the issue dynamically`);

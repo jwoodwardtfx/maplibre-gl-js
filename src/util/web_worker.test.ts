@@ -26,6 +26,34 @@ describe('workerFactory', () => {
         expect(WorkerSpy.mock.calls[0]).toEqual(['', {type: 'module'}]);
     });
 
+    test('file-scheme worker URL is read with XHR and the worker is constructed as a classic worker from a Blob URL', async () => {
+        const WorkerSpy = vi.fn();
+        (globalThis as any).Worker = WorkerSpy;
+        const fetchSpy = vi.spyOn(globalThis, 'fetch');
+        const xhrInstance = {open: vi.fn(), send: vi.fn(), responseType: '', status: 0, response: '// worker code\nexport{RS as default};\n//# sourceMappingURL=maplibre-gl-worker.mjs.map\n', onload: null as () => void, onerror: null as () => void};
+        const originalXhr = (globalThis as any).XMLHttpRequest;
+        (globalThis as any).XMLHttpRequest = function () { return xhrInstance; };
+        xhrInstance.send.mockImplementation(() => { xhrInstance.onload(); });
+        const BlobSpy = vi.spyOn(globalThis, 'Blob');
+        const createObjectURLSpy = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:resource://android/abc');
+        const revokeObjectURLSpy = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
+
+        config.WORKER_URL = 'resource://android/assets/maplibre-gl-worker.mjs';
+        try {
+            await workerFactory();
+        } finally {
+            (globalThis as any).XMLHttpRequest = originalXhr;
+        }
+
+        expect(fetchSpy).toHaveBeenCalledTimes(0);
+        expect(xhrInstance.open).toHaveBeenCalledWith('GET', 'resource://android/assets/maplibre-gl-worker.mjs', true);
+        expect(BlobSpy).toHaveBeenCalledWith(['// worker code\n\n//# sourceMappingURL=maplibre-gl-worker.mjs.map\n'], {type: 'text/javascript'});
+        expect(createObjectURLSpy).toHaveBeenCalled();
+        expect(WorkerSpy).toHaveBeenCalledTimes(1);
+        expect(WorkerSpy.mock.calls[0]).toEqual(['blob:resource://android/abc']);
+        expect(revokeObjectURLSpy).toHaveBeenCalledWith('blob:resource://android/abc');
+    });
+
     test('creates a classic worker when WORKER_URL ends with .cjs', async () => {
         const WorkerSpy = vi.fn();
         (globalThis as any).Worker = WorkerSpy;
